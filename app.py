@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
 import json
 import os
+import sqlite3
 from datetime import datetime
 
 app = Flask(__name__)
@@ -10,73 +11,146 @@ CORS(app, resources={r"/api/*": {"origins": "*"}})
 # Render 会自动设置 PORT 环境变量
 PORT = int(os.environ.get('PORT', 5000))
 
-# 数据文件路径
-GOODS_FILE = os.path.join(os.path.dirname(__file__), 'data', 'goods.json')
-HISTORY_FILE = os.path.join(os.path.dirname(__file__), 'data', 'history.json')
+# 数据库文件路径
+DB_PATH = os.path.join(os.path.dirname(__file__), 'warehouse.db')
+
+
+def get_db_connection():
+    """获取数据库连接"""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def init_db():
+    """初始化数据库表"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # 创建货物表
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS goods (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            price REAL NOT NULL,
+            location TEXT NOT NULL,
+            quantity INTEGER DEFAULT 0,
+            stock INTEGER DEFAULT 0,
+            min_quantity INTEGER DEFAULT 0,
+            description TEXT DEFAULT '',
+            created_at TEXT,
+            updated_at TEXT
+        )
+    ''')
+    
+    # 创建历史记录表
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            goods_name TEXT NOT NULL,
+            operation_type TEXT NOT NULL,
+            quantity INTEGER NOT NULL,
+            notes TEXT DEFAULT '',
+            timestamp TEXT NOT NULL
+        )
+    ''')
+    
+    conn.commit()
+    conn.close()
+
+
+# 初始化数据库
+init_db()
 
 
 def load_goods():
     """加载货物数据"""
-    try:
-        with open(GOODS_FILE, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-            # 确保每个货物都有兼容字段
-            for goods in data.get("goods", []):
-                if "id" in goods:
-                    goods["_id"] = str(goods["id"])
-                if "quantity" in goods:
-                    goods["stock"] = goods["quantity"]
-                elif "stock" in goods:
-                    goods["quantity"] = goods["stock"]
-            return data
-    except (FileNotFoundError, json.JSONDecodeError):
-        return {"goods": []}
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM goods ORDER BY id')
+    rows = cursor.fetchall()
+    conn.close()
+    
+    goods_list = []
+    for row in rows:
+        goods = {
+            "id": row["id"],
+            "_id": str(row["id"]),
+            "name": row["name"],
+            "price": row["price"],
+            "location": row["location"],
+            "quantity": row["quantity"],
+            "stock": row["stock"],
+            "min_quantity": row["min_quantity"],
+            "description": row["description"],
+            "created_at": row["created_at"],
+            "updated_at": row["updated_at"]
+        }
+        goods_list.append(goods)
+    
+    return {"goods": goods_list}
 
 
 def save_goods(data):
-    """保存货物数据"""
-    with open(GOODS_FILE, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    """保存货物数据（已弃用，使用数据库操作）"""
+    pass
 
 
 def load_history():
     """加载操作历史"""
-    try:
-        with open(HISTORY_FILE, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-            # 添加兼容字段
-            for record in data.get("history", []):
-                if "id" in record:
-                    record["_id"] = str(record["id"])
-                if "timestamp" in record and "time" not in record:
-                    record["time"] = record["timestamp"]
-                elif "time" in record and "timestamp" not in record:
-                    record["timestamp"] = record["time"]
-            return data
-    except (FileNotFoundError, json.JSONDecodeError):
-        return {"history": []}
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM history ORDER BY id DESC')
+    rows = cursor.fetchall()
+    conn.close()
+    
+    history_list = []
+    for row in rows:
+        record = {
+            "id": row["id"],
+            "_id": str(row["id"]),
+            "goods_name": row["goods_name"],
+            "operation_type": row["operation_type"],
+            "quantity": row["quantity"],
+            "notes": row["notes"],
+            "timestamp": row["timestamp"],
+            "time": row["timestamp"]
+        }
+        history_list.append(record)
+    
+    return {"history": history_list}
 
 
 def save_history(data):
-    """保存操作历史"""
-    with open(HISTORY_FILE, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    """保存操作历史（已弃用，使用数据库操作）"""
+    pass
 
 
 def add_history_record(goods_name, operation_type, quantity, notes=""):
     """添加操作历史记录"""
-    history_data = load_history()
-    record = {
-        "id": len(history_data["history"]) + 1,
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    cursor.execute(
+        'INSERT INTO history (goods_name, operation_type, quantity, notes, timestamp) VALUES (?, ?, ?, ?, ?)',
+        (goods_name, operation_type, quantity, notes, timestamp)
+    )
+    
+    record_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    
+    return {
+        "id": record_id,
+        "_id": str(record_id),
         "goods_name": goods_name,
         "operation_type": operation_type,
         "quantity": quantity,
         "notes": notes,
-        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        "timestamp": timestamp,
+        "time": timestamp
     }
-    history_data["history"].append(record)
-    save_history(history_data)
-    return record
 
 
 # 主页
@@ -121,54 +195,116 @@ def search_goods():
 # 根据 _id 修改货物（兼容小程序）
 @app.route('/api/goods/by/_id/<string:goods_id>', methods=['PUT'])
 def update_goods_by_uuid(goods_id):
-    data = load_goods()
     goods_data = request.get_json()
+    conn = get_db_connection()
+    cursor = conn.cursor()
     
-    for goods in data["goods"]:
-        if str(goods.get("id")) == goods_id or goods.get("_id") == goods_id:
-            # 更新字段
-            if "name" in goods_data:
-                goods["name"] = goods_data["name"]
-            if "price" in goods_data:
-                goods["price"] = float(goods_data["price"])
-            if "location" in goods_data:
-                goods["location"] = goods_data["location"]
-            if "quantity" in goods_data:
-                goods["quantity"] = int(goods_data["quantity"])
-                goods["stock"] = int(goods_data["quantity"])
-            elif "stock" in goods_data:
-                goods["stock"] = int(goods_data["stock"])
-                goods["quantity"] = int(goods_data["stock"])
-            if "min_quantity" in goods_data:
-                goods["min_quantity"] = int(goods_data["min_quantity"])
-            if "description" in goods_data:
-                goods["description"] = goods_data["description"]
-            
-            goods["updated_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            save_goods(data)
-            return jsonify({"success": True, "goods": goods})
+    # 先查询货物
+    cursor.execute('SELECT * FROM goods WHERE id = ?', (goods_id,))
+    goods = cursor.fetchone()
     
-    return jsonify({"error": "货物不存在"}), 404
+    if not goods:
+        conn.close()
+        return jsonify({"error": "货物不存在"}), 404
+    
+    # 构建更新语句
+    update_fields = []
+    params = []
+    
+    if "name" in goods_data:
+        update_fields.append("name = ?")
+        params.append(goods_data["name"])
+    if "price" in goods_data:
+        update_fields.append("price = ?")
+        params.append(float(goods_data["price"]))
+    if "location" in goods_data:
+        update_fields.append("location = ?")
+        params.append(goods_data["location"])
+    if "quantity" in goods_data:
+        update_fields.append("quantity = ?")
+        update_fields.append("stock = ?")
+        params.append(int(goods_data["quantity"]))
+        params.append(int(goods_data["quantity"]))
+    elif "stock" in goods_data:
+        update_fields.append("stock = ?")
+        update_fields.append("quantity = ?")
+        params.append(int(goods_data["stock"]))
+        params.append(int(goods_data["stock"]))
+    if "min_quantity" in goods_data:
+        update_fields.append("min_quantity = ?")
+        params.append(int(goods_data["min_quantity"]))
+    if "description" in goods_data:
+        update_fields.append("description = ?")
+        params.append(goods_data["description"])
+    
+    update_fields.append("updated_at = ?")
+    params.append(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    
+    params.append(goods_id)
+    
+    cursor.execute(f"UPDATE goods SET {', '.join(update_fields)} WHERE id = ?", params)
+    conn.commit()
+    
+    # 获取更新后的数据
+    cursor.execute('SELECT * FROM goods WHERE id = ?', (goods_id,))
+    updated_goods = cursor.fetchone()
+    conn.close()
+    
+    return jsonify({
+        "success": True,
+        "goods": {
+            "id": updated_goods["id"],
+            "_id": str(updated_goods["id"]),
+            "name": updated_goods["name"],
+            "price": updated_goods["price"],
+            "location": updated_goods["location"],
+            "quantity": updated_goods["quantity"],
+            "stock": updated_goods["stock"],
+            "min_quantity": updated_goods["min_quantity"],
+            "description": updated_goods["description"],
+            "created_at": updated_goods["created_at"],
+            "updated_at": updated_goods["updated_at"]
+        }
+    })
 
 
 # 根据 _id 删除货物（兼容小程序）
 @app.route('/api/goods/by/_id/<string:goods_id>', methods=['DELETE'])
 def delete_goods_by_uuid(goods_id):
-    data = load_goods()
+    conn = get_db_connection()
+    cursor = conn.cursor()
     
-    for i, goods in enumerate(data["goods"]):
-        if str(goods.get("id")) == goods_id or goods.get("_id") == goods_id:
-            deleted_goods = data["goods"].pop(i)
-            save_goods(data)
-            return jsonify({"success": True, "goods": deleted_goods})
+    cursor.execute('SELECT * FROM goods WHERE id = ?', (goods_id,))
+    goods = cursor.fetchone()
     
-    return jsonify({"error": "货物不存在"}), 404
+    if not goods:
+        conn.close()
+        return jsonify({"error": "货物不存在"}), 404
+    
+    deleted_goods = {
+        "id": goods["id"],
+        "_id": str(goods["id"]),
+        "name": goods["name"],
+        "price": goods["price"],
+        "location": goods["location"],
+        "quantity": goods["quantity"],
+        "stock": goods["stock"],
+        "min_quantity": goods["min_quantity"],
+        "description": goods["description"],
+        "created_at": goods["created_at"],
+        "updated_at": goods["updated_at"]
+    }
+    
+    cursor.execute('DELETE FROM goods WHERE id = ?', (goods_id,))
+    conn.commit()
+    conn.close()
+    
+    return jsonify({"success": True, "goods": deleted_goods})
 
 
 # 添加货物
 @app.route('/api/goods', methods=['POST'])
 def add_goods():
-    data = load_goods()
     goods_data = request.get_json()
     
     # 验证必填字段
@@ -177,24 +313,45 @@ def add_goods():
         if field not in goods_data or not goods_data[field]:
             return jsonify({"error": f"缺少必填字段: {field}"}), 400
     
-    # 生成新ID
-    new_id = max([g["id"] for g in data["goods"]], default=0) + 1
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    quantity = int(goods_data.get("quantity", goods_data.get("stock", 0)))
+    
+    cursor.execute(
+        '''INSERT INTO goods (name, price, location, quantity, stock, min_quantity, description, created_at, updated_at) 
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+        (
+            goods_data["name"],
+            float(goods_data["price"]),
+            goods_data["location"],
+            quantity,
+            quantity,
+            int(goods_data.get("min_quantity", 0)),
+            goods_data.get("description", ""),
+            timestamp,
+            timestamp
+        )
+    )
+    
+    new_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
     
     new_goods = {
         "id": new_id,
-        "_id": str(new_id),  # 兼容小程序使用的 _id
+        "_id": str(new_id),
         "name": goods_data["name"],
         "price": float(goods_data["price"]),
         "location": goods_data["location"],
-        "quantity": int(goods_data.get("quantity", goods_data.get("stock", 0))),
-        "stock": int(goods_data.get("stock", goods_data.get("quantity", 0))),  # 兼容小程序使用的 stock
+        "quantity": quantity,
+        "stock": quantity,
         "min_quantity": int(goods_data.get("min_quantity", 0)),
         "description": goods_data.get("description", ""),
-        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        "created_at": timestamp,
+        "updated_at": timestamp
     }
-    
-    data["goods"].append(new_goods)
-    save_goods(data)
     
     return jsonify({"success": True, "goods": new_goods})
 
@@ -202,48 +359,111 @@ def add_goods():
 # 修改货物
 @app.route('/api/goods/<int:goods_id>', methods=['PUT'])
 def update_goods(goods_id):
-    data = load_goods()
     goods_data = request.get_json()
+    conn = get_db_connection()
+    cursor = conn.cursor()
     
-    for goods in data["goods"]:
-        if goods["id"] == goods_id:
-            # 更新字段
-            if "name" in goods_data:
-                goods["name"] = goods_data["name"]
-            if "price" in goods_data:
-                goods["price"] = float(goods_data["price"])
-            if "location" in goods_data:
-                goods["location"] = goods_data["location"]
-            if "quantity" in goods_data:
-                goods["quantity"] = int(goods_data["quantity"])
-                goods["stock"] = int(goods_data["quantity"])  # 兼容 stock
-            elif "stock" in goods_data:  # 兼容小程序使用的 stock
-                goods["stock"] = int(goods_data["stock"])
-                goods["quantity"] = int(goods_data["stock"])
-            if "min_quantity" in goods_data:
-                goods["min_quantity"] = int(goods_data["min_quantity"])
-            if "description" in goods_data:
-                goods["description"] = goods_data["description"]
-            
-            goods["updated_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            save_goods(data)
-            return jsonify({"success": True, "goods": goods})
+    # 先查询货物
+    cursor.execute('SELECT * FROM goods WHERE id = ?', (goods_id,))
+    goods = cursor.fetchone()
     
-    return jsonify({"error": "货物不存在"}), 404
+    if not goods:
+        conn.close()
+        return jsonify({"error": "货物不存在"}), 404
+    
+    # 构建更新语句
+    update_fields = []
+    params = []
+    
+    if "name" in goods_data:
+        update_fields.append("name = ?")
+        params.append(goods_data["name"])
+    if "price" in goods_data:
+        update_fields.append("price = ?")
+        params.append(float(goods_data["price"]))
+    if "location" in goods_data:
+        update_fields.append("location = ?")
+        params.append(goods_data["location"])
+    if "quantity" in goods_data:
+        update_fields.append("quantity = ?")
+        update_fields.append("stock = ?")
+        params.append(int(goods_data["quantity"]))
+        params.append(int(goods_data["quantity"]))
+    elif "stock" in goods_data:
+        update_fields.append("stock = ?")
+        update_fields.append("quantity = ?")
+        params.append(int(goods_data["stock"]))
+        params.append(int(goods_data["stock"]))
+    if "min_quantity" in goods_data:
+        update_fields.append("min_quantity = ?")
+        params.append(int(goods_data["min_quantity"]))
+    if "description" in goods_data:
+        update_fields.append("description = ?")
+        params.append(goods_data["description"])
+    
+    update_fields.append("updated_at = ?")
+    params.append(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    
+    params.append(goods_id)
+    
+    cursor.execute(f"UPDATE goods SET {', '.join(update_fields)} WHERE id = ?", params)
+    conn.commit()
+    
+    # 获取更新后的数据
+    cursor.execute('SELECT * FROM goods WHERE id = ?', (goods_id,))
+    updated_goods = cursor.fetchone()
+    conn.close()
+    
+    return jsonify({
+        "success": True,
+        "goods": {
+            "id": updated_goods["id"],
+            "_id": str(updated_goods["id"]),
+            "name": updated_goods["name"],
+            "price": updated_goods["price"],
+            "location": updated_goods["location"],
+            "quantity": updated_goods["quantity"],
+            "stock": updated_goods["stock"],
+            "min_quantity": updated_goods["min_quantity"],
+            "description": updated_goods["description"],
+            "created_at": updated_goods["created_at"],
+            "updated_at": updated_goods["updated_at"]
+        }
+    })
 
 
 # 删除货物
 @app.route('/api/goods/<int:goods_id>', methods=['DELETE'])
 def delete_goods(goods_id):
-    data = load_goods()
+    conn = get_db_connection()
+    cursor = conn.cursor()
     
-    for i, goods in enumerate(data["goods"]):
-        if goods["id"] == goods_id:
-            deleted_goods = data["goods"].pop(i)
-            save_goods(data)
-            return jsonify({"success": True, "goods": deleted_goods})
+    cursor.execute('SELECT * FROM goods WHERE id = ?', (goods_id,))
+    goods = cursor.fetchone()
     
-    return jsonify({"error": "货物不存在"}), 404
+    if not goods:
+        conn.close()
+        return jsonify({"error": "货物不存在"}), 404
+    
+    deleted_goods = {
+        "id": goods["id"],
+        "_id": str(goods["id"]),
+        "name": goods["name"],
+        "price": goods["price"],
+        "location": goods["location"],
+        "quantity": goods["quantity"],
+        "stock": goods["stock"],
+        "min_quantity": goods["min_quantity"],
+        "description": goods["description"],
+        "created_at": goods["created_at"],
+        "updated_at": goods["updated_at"]
+    }
+    
+    cursor.execute('DELETE FROM goods WHERE id = ?', (goods_id,))
+    conn.commit()
+    conn.close()
+    
+    return jsonify({"success": True, "goods": deleted_goods})
 
 
 # ============ 库存操作API ============
@@ -251,62 +471,115 @@ def delete_goods(goods_id):
 # 货物入库（放入）
 @app.route('/api/goods/<int:goods_id>/stock_in', methods=['POST'])
 def stock_in(goods_id):
-    data = load_goods()
     post_data = request.get_json()
     quantity = int(post_data.get('quantity', 0))
     
     if quantity <= 0:
         return jsonify({"error": "数量必须大于0"}), 400
     
-    for goods in data["goods"]:
-        if goods["id"] == goods_id:
-            goods["quantity"] += quantity
-            goods["updated_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            save_goods(data)
-            
-            # 记录操作历史
-            add_history_record(
-                goods["name"], 
-                "入库", 
-                quantity, 
-                post_data.get("notes", "")
-            )
-            
-            return jsonify({"success": True, "goods": goods})
+    conn = get_db_connection()
+    cursor = conn.cursor()
     
-    return jsonify({"error": "货物不存在"}), 404
+    cursor.execute('SELECT * FROM goods WHERE id = ?', (goods_id,))
+    goods = cursor.fetchone()
+    
+    if not goods:
+        conn.close()
+        return jsonify({"error": "货物不存在"}), 404
+    
+    new_quantity = goods["quantity"] + quantity
+    cursor.execute('UPDATE goods SET quantity = ?, stock = ?, updated_at = ? WHERE id = ?',
+                   (new_quantity, new_quantity, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), goods_id))
+    conn.commit()
+    
+    # 记录操作历史
+    add_history_record(
+        goods["name"],
+        "入库",
+        quantity,
+        post_data.get("notes", "")
+    )
+    
+    # 获取更新后的数据
+    cursor.execute('SELECT * FROM goods WHERE id = ?', (goods_id,))
+    updated_goods = cursor.fetchone()
+    conn.close()
+    
+    return jsonify({
+        "success": True,
+        "goods": {
+            "id": updated_goods["id"],
+            "_id": str(updated_goods["id"]),
+            "name": updated_goods["name"],
+            "price": updated_goods["price"],
+            "location": updated_goods["location"],
+            "quantity": updated_goods["quantity"],
+            "stock": updated_goods["stock"],
+            "min_quantity": updated_goods["min_quantity"],
+            "description": updated_goods["description"],
+            "created_at": updated_goods["created_at"],
+            "updated_at": updated_goods["updated_at"]
+        }
+    })
 
 
 # 货物出库（取出）
 @app.route('/api/goods/<int:goods_id>/stock_out', methods=['POST'])
 def stock_out(goods_id):
-    data = load_goods()
     post_data = request.get_json()
     quantity = int(post_data.get('quantity', 0))
     
     if quantity <= 0:
         return jsonify({"error": "数量必须大于0"}), 400
     
-    for goods in data["goods"]:
-        if goods["id"] == goods_id:
-            if goods["quantity"] < quantity:
-                return jsonify({"error": f"库存不足，当前库存: {goods['quantity']}"}), 400
-            
-            goods["quantity"] -= quantity
-            goods["updated_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            save_goods(data)
-            
-            # 记录操作历史
-            add_history_record(
-                goods["name"], 
-                "出库", 
-                -quantity, 
-                post_data.get("notes", "")
-            )
-            
-            return jsonify({"success": True, "goods": goods})
+    conn = get_db_connection()
+    cursor = conn.cursor()
     
-    return jsonify({"error": "货物不存在"}), 404
+    cursor.execute('SELECT * FROM goods WHERE id = ?', (goods_id,))
+    goods = cursor.fetchone()
+    
+    if not goods:
+        conn.close()
+        return jsonify({"error": "货物不存在"}), 404
+    
+    if goods["quantity"] < quantity:
+        conn.close()
+        return jsonify({"error": f"库存不足，当前库存: {goods['quantity']}"}), 400
+    
+    new_quantity = goods["quantity"] - quantity
+    cursor.execute('UPDATE goods SET quantity = ?, stock = ?, updated_at = ? WHERE id = ?',
+                   (new_quantity, new_quantity, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), goods_id))
+    conn.commit()
+    
+    # 记录操作历史
+    add_history_record(
+        goods["name"],
+        "出库",
+        -quantity,
+        post_data.get("notes", "")
+    )
+    
+    # 获取更新后的数据
+    cursor.execute('SELECT * FROM goods WHERE id = ?', (goods_id,))
+    updated_goods = cursor.fetchone()
+    conn.close()
+    
+    return jsonify({
+        "success": True,
+        "goods": {
+            "id": updated_goods["id"],
+            "_id": str(updated_goods["id"]),
+            "name": updated_goods["name"],
+            "price": updated_goods["price"],
+            "location": updated_goods["location"],
+            "quantity": updated_goods["quantity"],
+            "stock": updated_goods["stock"],
+            "min_quantity": updated_goods["min_quantity"],
+            "description": updated_goods["description"],
+            "created_at": updated_goods["created_at"],
+            "updated_at": updated_goods["updated_at"]
+        }
+    })
 
 
 # ============ 查询API ============
@@ -314,41 +587,68 @@ def stock_out(goods_id):
 # 查询货物位置
 @app.route('/api/goods/<int:goods_id>/location', methods=['GET'])
 def get_location(goods_id):
-    data = load_goods()
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT id, name, location FROM goods WHERE id = ?', (goods_id,))
+    goods = cursor.fetchone()
+    conn.close()
     
-    for goods in data["goods"]:
-        if goods["id"] == goods_id:
-            return jsonify({
-                "id": goods["id"],
-                "name": goods["name"],
-                "location": goods["location"]
-            })
+    if not goods:
+        return jsonify({"error": "货物不存在"}), 404
     
-    return jsonify({"error": "货物不存在"}), 404
+    return jsonify({
+        "id": goods["id"],
+        "name": goods["name"],
+        "location": goods["location"]
+    })
 
 
 # 查询货物价格
 @app.route('/api/goods/<int:goods_id>/price', methods=['GET'])
 def get_price(goods_id):
-    data = load_goods()
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT id, name, price FROM goods WHERE id = ?', (goods_id,))
+    goods = cursor.fetchone()
+    conn.close()
     
-    for goods in data["goods"]:
-        if goods["id"] == goods_id:
-            return jsonify({
-                "id": goods["id"],
-                "name": goods["name"],
-                "price": goods["price"]
-            })
+    if not goods:
+        return jsonify({"error": "货物不存在"}), 404
     
-    return jsonify({"error": "货物不存在"}), 404
+    return jsonify({
+        "id": goods["id"],
+        "name": goods["name"],
+        "price": goods["price"]
+    })
 
 
 # 获取低库存货物
 @app.route('/api/goods/low_stock', methods=['GET'])
 def get_low_stock():
-    data = load_goods()
-    low_stock_goods = [g for g in data["goods"] if g["quantity"] <= g.get("min_quantity", 0)]
-    return jsonify({"goods": low_stock_goods})
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM goods WHERE quantity <= min_quantity ORDER BY id')
+    rows = cursor.fetchall()
+    conn.close()
+    
+    goods_list = []
+    for row in rows:
+        goods = {
+            "id": row["id"],
+            "_id": str(row["id"]),
+            "name": row["name"],
+            "price": row["price"],
+            "location": row["location"],
+            "quantity": row["quantity"],
+            "stock": row["stock"],
+            "min_quantity": row["min_quantity"],
+            "description": row["description"],
+            "created_at": row["created_at"],
+            "updated_at": row["updated_at"]
+        }
+        goods_list.append(goods)
+    
+    return jsonify({"goods": goods_list})
 
 
 # ============ 操作历史API ============
@@ -376,37 +676,73 @@ def search_history():
 # 删除历史记录
 @app.route('/api/history/<int:record_id>', methods=['DELETE'])
 def delete_history_record(record_id):
-    data = load_history()
+    conn = get_db_connection()
+    cursor = conn.cursor()
     
-    for i, record in enumerate(data["history"]):
-        if record["id"] == record_id:
-            deleted_record = data["history"].pop(i)
-            save_history(data)
-            return jsonify({"success": True, "record": deleted_record})
+    cursor.execute('SELECT * FROM history WHERE id = ?', (record_id,))
+    record = cursor.fetchone()
     
-    return jsonify({"error": "记录不存在"}), 404
+    if not record:
+        conn.close()
+        return jsonify({"error": "记录不存在"}), 404
+    
+    deleted_record = {
+        "id": record["id"],
+        "_id": str(record["id"]),
+        "goods_name": record["goods_name"],
+        "operation_type": record["operation_type"],
+        "quantity": record["quantity"],
+        "notes": record["notes"],
+        "timestamp": record["timestamp"],
+        "time": record["timestamp"]
+    }
+    
+    cursor.execute('DELETE FROM history WHERE id = ?', (record_id,))
+    conn.commit()
+    conn.close()
+    
+    return jsonify({"success": True, "record": deleted_record})
 
 
 # 根据 _id 删除历史记录（兼容小程序）
 @app.route('/api/history/by/_id/<string:record_id>', methods=['DELETE'])
 def delete_history_record_by_uuid(record_id):
-    data = load_history()
+    conn = get_db_connection()
+    cursor = conn.cursor()
     
-    for i, record in enumerate(data["history"]):
-        if str(record.get("id")) == record_id or record.get("_id") == record_id:
-            deleted_record = data["history"].pop(i)
-            save_history(data)
-            return jsonify({"success": True, "record": deleted_record})
+    cursor.execute('SELECT * FROM history WHERE id = ?', (record_id,))
+    record = cursor.fetchone()
     
-    return jsonify({"error": "记录不存在"}), 404
+    if not record:
+        conn.close()
+        return jsonify({"error": "记录不存在"}), 404
+    
+    deleted_record = {
+        "id": record["id"],
+        "_id": str(record["id"]),
+        "goods_name": record["goods_name"],
+        "operation_type": record["operation_type"],
+        "quantity": record["quantity"],
+        "notes": record["notes"],
+        "timestamp": record["timestamp"],
+        "time": record["timestamp"]
+    }
+    
+    cursor.execute('DELETE FROM history WHERE id = ?', (record_id,))
+    conn.commit()
+    conn.close()
+    
+    return jsonify({"success": True, "record": deleted_record})
 
 
 # 清空所有历史记录
 @app.route('/api/history/clear', methods=['DELETE'])
 def clear_history():
-    data = load_history()
-    data["history"] = []
-    save_history(data)
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM history')
+    conn.commit()
+    conn.close()
     return jsonify({"success": True})
 
 
