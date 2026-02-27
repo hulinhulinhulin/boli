@@ -1,0 +1,83 @@
+<!--pages/history/history.wxml-->
+<view class="container">
+  <!-- 头部操作栏 -->
+  <view class="header-bar" wx:if="{{allList.length > 0}}">
+    <view class="clear-btn" bindtap="clearAllHistory">清空历史</view>
+  </view>
+
+  <!-- 筛选 -->
+  <view class="filter-bar">
+    <view 
+      class="filter-item {{filterType === 'all' ? 'active' : ''}}" 
+      bindtap="setFilter" 
+      data-type="all"
+    >
+      全部
+    </view>
+    <view 
+      class="filter-item {{filterType === 'in' ? 'active' : ''}}" 
+      bindtap="setFilter" 
+      data-type="in"
+    >
+      入库
+    </view>
+    <view 
+      class="filter-item {{filterType === 'out' ? 'active' : ''}}" 
+      bindtap="setFilter" 
+      data-type="out"
+    >
+      出库
+    </view>
+  </view>
+
+  <!-- 统计 -->
+  <view class="stats-row">
+    <view class="stats-item">
+      <text class="stats-num">{{stats.todayIn}}</text>
+      <text class="stats-label">今日入库</text>
+    </view>
+    <view class="stats-item">
+      <text class="stats-num">{{stats.todayOut}}</text>
+      <text class="stats-label">今日出库</text>
+    </view>
+    <view class="stats-item">
+      <text class="stats-num">{{stats.totalIn}}</text>
+      <text class="stats-label">累计入库</text>
+    </view>
+    <view class="stats-item">
+      <text class="stats-num">{{stats.totalOut}}</text>
+      <text class="stats-label">累计出库</text>
+    </view>
+  </view>
+
+  <!-- 历史列表 -->
+  <view class="history-list" wx:if="{{filteredList.length > 0}}">
+    <view class="list-date" wx:for="{{groupedList}}" wx:key="date">
+      <view class="date-header">{{item.date}}</view>
+      <view class="history-item" wx:for="{{item.items}}" wx:key="_id" wx:for-item="record">
+        <view class="history-icon {{record.type === 'in' ? 'bg-success' : 'bg-warning'}}">
+          {{record.type === 'in' ? '↑' : '↓'}}
+        </view>
+        <view class="history-content">
+          <view class="history-main">
+            <text class="history-name">{{record.goodsName}}</text>
+            <text class="history-quantity {{record.type === 'in' ? 'text-success' : 'text-warning'}}">
+              {{record.type === 'in' ? '+' : '-'}}{{record.quantity}}
+            </text>
+          </view>
+          <view class="history-detail">
+            <text class="history-location">{{record.location}}</text>
+            <text class="history-time">{{record.timeStr}}</text>
+          </view>
+        </view>
+        <view class="delete-btn" bindtap="deleteRecord" data-id="{{record._id}}">×</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty" wx:if="{{filteredList.length === 0}}">
+    <text class="empty-text">暂无记录</text>
+    <text class="empty-hint">取出或放入货物后会显示在此处</text>
+  </view>
+</view>

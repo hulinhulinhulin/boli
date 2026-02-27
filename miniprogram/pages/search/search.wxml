@@ -1,0 +1,78 @@
+<!--pages/search/search.wxml-->
+<view class="container">
+  <!-- 搜索框 -->
+  <view class="search-box">
+    <view class="search-input-wrap">
+      <text class="search-icon">🔍</text>
+      <input 
+        class="search-input" 
+        placeholder="搜索货物名称/货架位置" 
+        value="{{keyword}}"
+        bindinput="onInput"
+        bindconfirm="onSearch"
+        confirm-type="search"
+      />
+      <view class="search-clear" wx:if="{{keyword}}" bindtap="clearSearch">
+        ✕
+      </view>
+    </view>
+    <button class="search-btn" bindtap="onSearch">搜索</button>
+  </view>
+
+  <!-- 搜索结果 -->
+  <view class="result-section" wx:if="{{hasSearched}}">
+    <view class="section-title">
+      搜索结果 <text class="result-count">({{resultList.length}})</text>
+    </view>
+    
+    <view wx:if="{{resultList.length > 0}}">
+      <view class="goods-card" wx:for="{{resultList}}" wx:key="_id" bindtap="viewGoods" data-id="{{item._id}}">
+        <view class="goods-info">
+          <view class="goods-name">{{item.name}}</view>
+          <view class="goods-detail">
+            <text class="tag tag-primary">{{item.location}}</text>
+            <text class="goods-price">¥{{item.price}}</text>
+          </view>
+        </view>
+        <view class="goods-stock">
+          <text class="stock-num {{item.stock > 10 ? 'text-success' : (item.stock > 0 ? 'text-warning' : 'text-error')}}">
+            {{item.stock}}
+          </text>
+          <text class="stock-label">库存</text>
+        </view>
+      </view>
+    </view>
+    
+    <view wx:else class="empty">
+      <text class="empty-text">未找到相关货物</text>
+      <text class="empty-hint">试试其他关键词</text>
+    </view>
+  </view>
+
+  <!-- 搜索历史 -->
+  <view class="history-section" wx:if="{{!hasSearched && searchHistory.length > 0}}">
+    <view class="section-title flex-between">
+      <text>搜索历史</text>
+      <text class="clear-history" bindtap="clearHistory">清除</text>
+    </view>
+    <view class="history-tags">
+      <view 
+        class="history-tag" 
+        wx:for="{{searchHistory}}" 
+        wx:key="index"
+        bindtap="searchFromHistory"
+        data-keyword="{{item}}"
+      >
+        {{item}}
+      </view>
+    </view>
+  </view>
+
+  <!-- 默认提示 -->
+  <view class="default-tips" wx:if="{{!hasSearched && searchHistory.length === 0}}">
+    <view class="tip-title">使用提示</view>
+    <view class="tip-item">• 输入货物名称搜索</view>
+    <view class="tip-item">• 输入货架位置查找货物</view>
+    <view class="tip-item">• 点击结果可查看/操作货物</view>
+  </view>
+</view>

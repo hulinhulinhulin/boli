@@ -1,0 +1,248 @@
+/* pages/operation/operation.wxss */
+
+/* Tab切换 */
+.tab-bar {
+  display: flex;
+  background: #fff;
+  border-radius: 14rpx;
+  padding: 10rpx;
+  margin-bottom: 36rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
+}
+
+.tab-item {
+  flex: 1;
+  text-align: center;
+  padding: 26rpx 0;
+  font-size: 34rpx;
+  color: #666;
+  border-radius: 10rpx;
+  transition: all 0.3s;
+}
+
+.tab-item.active {
+  background: #1890ff;
+  color: #fff;
+  font-weight: 500;
+}
+
+/* 输入框样式 */
+.input-group {
+  margin-bottom: 36rpx;
+}
+
+.input-label {
+  display: block;
+  margin-bottom: 16rpx;
+  font-size: 34rpx;
+  color: #333;
+  font-weight: 500;
+}
+
+.input {
+  width: 100%;
+  padding: 32rpx 28rpx;
+  border: 2rpx solid #e8e8e8;
+  border-radius: 12rpx;
+  font-size: 38rpx;
+  color: #333;
+  background: #fff;
+  box-sizing: border-box;
+  height: 100rpx;
+}
+
+.input::placeholder {
+  color: #999;
+  font-size: 34rpx;
+}
+
+.input:focus {
+  border-color: #1890ff;
+}
+
+.textarea {
+  width: 100%;
+  padding: 32rpx 28rpx;
+  border: 2rpx solid #e8e8e8;
+  border-radius: 12rpx;
+  font-size: 38rpx;
+  color: #333;
+  background: #fff;
+  box-sizing: border-box;
+  min-height: 180rpx;
+}
+
+.textarea::placeholder {
+  color: #999;
+  font-size: 34rpx;
+}
+
+/* Picker选择器 */
+.picker-box {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 30rpx;
+  border: 2rpx solid #e8e8e8;
+  border-radius: 12rpx;
+  font-size: 34rpx;
+}
+
+.picker-arrow {
+  color: #999;
+  font-size: 28rpx;
+}
+
+/* 货物信息卡片 */
+.goods-info-card {
+  background: #f8f9fa;
+  border-radius: 10rpx;
+  padding: 28rpx;
+  margin-bottom: 36rpx;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid #e8e8e8;
+}
+
+.info-row:last-child {
+  border-bottom: none;
+}
+
+.info-label {
+  color: #666;
+  font-size: 32rpx;
+}
+
+.info-value {
+  color: #333;
+  font-size: 34rpx;
+}
+
+.stock-value {
+  font-weight: bold;
+  font-size: 40rpx;
+}
+
+/* 数量输入 */
+.quantity-box {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+}
+
+.quantity-btn {
+  width: 96rpx;
+  height: 96rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f0f0f0;
+  border-radius: 12rpx;
+  font-size: 48rpx;
+  color: #333;
+}
+
+.quantity-btn:active {
+  background: #e0e0e0;
+}
+
+.quantity-input {
+  flex: 1;
+  text-align: center;
+  padding: 28rpx;
+  border: 2rpx solid #e8e8e8;
+  border-radius: 12rpx;
+  font-size: 40rpx;
+  font-weight: bold;
+}
+
+.quantity-hint {
+  display: block;
+  margin-top: 16rpx;
+  font-size: 28rpx;
+  color: #999;
+}
+
+/* 按钮样式 */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 30rpx 40rpx;
+  border-radius: 12rpx;
+  font-size: 36rpx;
+  border: none;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background: #1890ff;
+  color: #fff;
+}
+
+.btn-success {
+  background: #52c41a;
+  color: #fff;
+}
+
+.btn-warning {
+  background: #faad14;
+  color: #fff;
+}
+
+.btn-danger {
+  background: #fff;
+  color: #f5222d;
+  border: 2rpx solid #f5222d;
+}
+
+.btn-block {
+  width: 100%;
+}
+
+.mt-20 {
+  margin-top: 24rpx;
+}
+
+/* 提示卡片 */
+.tips-card {
+  background: #fff;
+  border-radius: 14rpx;
+  padding: 28rpx;
+  margin-top: 36rpx;
+}
+
+.tips-title {
+  font-size: 34rpx;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 20rpx;
+}
+
+.tips-item {
+  font-size: 32rpx;
+  color: #666;
+  line-height: 1.8;
+}
+
+/* 标签样式 */
+.tag {
+  display: inline-block;
+  padding: 10rpx 24rpx;
+  border-radius: 10rpx;
+  font-size: 28rpx;
+}
+
+.tag-primary {
+  background: #e6f7ff;
+  color: #1890ff;
+}
+
+.text-success { color: #52c41a; }
+.text-warning { color: #faad14; }
+.text-error { color: #f5222d; }

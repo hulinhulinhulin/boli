@@ -1,0 +1,172 @@
+/* pages/index/index.wxss */
+
+.stats-card {
+  display: flex;
+  justify-content: space-around;
+  background: linear-gradient(135deg, #1890ff 0%, #36cfc9 100%);
+  border-radius: 16rpx;
+  padding: 36rpx 24rpx;
+  margin-bottom: 36rpx;
+}
+
+.stats-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.stats-num {
+  font-size: 56rpx;
+  font-weight: bold;
+  color: #fff;
+}
+
+.stats-label {
+  font-size: 28rpx;
+  color: rgba(255, 255, 255, 0.8);
+  margin-top: 12rpx;
+}
+
+.section {
+  margin-bottom: 36rpx;
+}
+
+.section-title {
+  font-size: 36rpx;
+  font-weight: bold;
+  margin-bottom: 24rpx;
+  padding-left: 20rpx;
+  border-left: 8rpx solid #1890ff;
+}
+
+/* 历史记录样式 */
+.history-item {
+  display: flex;
+  align-items: center;
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.history-item:last-child {
+  border-bottom: none;
+}
+
+.history-icon {
+  width: 68rpx;
+  height: 68rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36rpx;
+  font-weight: bold;
+  color: #fff;
+  margin-right: 24rpx;
+}
+
+.bg-success {
+  background: #52c41a;
+}
+
+.bg-warning {
+  background: #faad14;
+}
+
+.history-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.history-name {
+  font-size: 34rpx;
+  color: #333;
+}
+
+.history-time {
+  font-size: 28rpx;
+  color: #999;
+  margin-top: 8rpx;
+}
+
+.history-action {
+  margin-left: 24rpx;
+}
+
+/* 货物卡片样式 */
+.goods-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fff;
+  border-radius: 14rpx;
+  padding: 28rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
+}
+
+.goods-info {
+  flex: 1;
+}
+
+.goods-name {
+  font-size: 34rpx;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 14rpx;
+}
+
+.goods-detail {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+}
+
+.goods-price {
+  font-size: 32rpx;
+  color: #ff4d4f;
+  font-weight: 500;
+}
+
+.goods-stock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-left: 24rpx;
+  border-left: 1rpx solid #f0f0f0;
+  margin-left: 24rpx;
+}
+
+.goods-right {
+  display: flex;
+  align-items: center;
+}
+
+.delete-btn {
+  width: 64rpx;
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36rpx;
+  margin-left: 16rpx;
+  color: #999;
+}
+
+.delete-btn:active {
+  color: #f5222d;
+}
+
+.stock-num {
+  font-size: 44rpx;
+  font-weight: bold;
+}
+
+.stock-label {
+  font-size: 26rpx;
+  color: #999;
+}
+
+.empty {
+  padding: 80rpx 0;
+}

@@ -1,0 +1,176 @@
+<!--pages/operation/operation.wxml-->
+<view class="container">
+  <!-- 操作类型切换 -->
+  <view class="tab-bar">
+    <view 
+      class="tab-item {{currentTab === 0 ? 'active' : ''}}" 
+      bindtap="switchTab" 
+      data-index="0"
+    >
+      取出
+    </view>
+    <view 
+      class="tab-item {{currentTab === 1 ? 'active' : ''}}" 
+      bindtap="switchTab" 
+      data-index="1"
+    >
+      放入
+    </view>
+    <view 
+      class="tab-item {{currentTab === 2 ? 'active' : ''}}" 
+      bindtap="switchTab" 
+      data-index="2"
+    >
+      新增货物
+    </view>
+  </view>
+
+  <!-- 货物选择/新增表单 -->
+  <view class="card">
+    <!-- 取出/放入：选择已有货物 -->
+    <view wx:if="{{currentTab !== 2}}">
+      <view class="input-group">
+        <text class="input-label">选择货物</text>
+        <picker 
+          mode="selector" 
+          range="{{goodsList}}" 
+          range-key="name" 
+          bindchange="onGoodsSelect"
+          value="{{selectedGoodsIndex}}"
+        >
+          <view class="picker-box">
+            <text>{{selectedGoodsIndex >= 0 ? goodsList[selectedGoodsIndex].name : '请选择货物'}}</text>
+            <text class="picker-arrow">▼</text>
+          </view>
+        </picker>
+      </view>
+      
+      <!-- 货物信息展示 -->
+      <view class="goods-info-card" wx:if="{{selectedGoodsIndex >= 0}}">
+        <view class="info-row">
+          <text class="info-label">货物名称</text>
+          <text class="info-value">{{goodsList[selectedGoodsIndex].name}}</text>
+        </view>
+        <view class="info-row">
+          <text class="info-label">存放位置</text>
+          <text class="info-value tag tag-primary">{{goodsList[selectedGoodsIndex].location}}</text>
+        </view>
+        <view class="info-row">
+          <text class="info-label">当前库存</text>
+          <text class="info-value stock-value {{goodsList[selectedGoodsIndex].stock > 10 ? 'text-success' : 'text-warning'}}">
+            {{goodsList[selectedGoodsIndex].stock}} 件
+          </text>
+        </view>
+        <view class="info-row">
+          <text class="info-label">单价</text>
+          <text class="info-value text-error">¥{{goodsList[selectedGoodsIndex].price}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 新增货物表单 -->
+    <view wx:if="{{currentTab === 2}}">
+      <view class="input-group">
+        <text class="input-label">货物名称 *</text>
+        <input 
+          class="input" 
+          placeholder="请输入货物名称" 
+          value="{{newGoods.name}}"
+          bindinput="onInputName"
+        />
+      </view>
+      
+      <view class="input-group">
+        <text class="input-label">存放位置 *</text>
+        <input 
+          class="input" 
+          placeholder="如：A区-01-03" 
+          value="{{newGoods.location}}"
+          bindinput="onInputLocation"
+        />
+      </view>
+      
+      <view class="input-group">
+        <text class="input-label">单价 (元) *</text>
+        <input 
+          class="input" 
+          type="digit" 
+          placeholder="请输入单价" 
+          value="{{newGoods.price}}"
+          bindinput="onInputPrice"
+        />
+      </view>
+      
+      <view class="input-group">
+        <text class="input-label">初始库存 (件)</text>
+        <input 
+          class="input" 
+          type="number" 
+          placeholder="默认为0" 
+          value="{{newGoods.stock}}"
+          bindinput="onInputStock"
+        />
+      </view>
+      
+      <view class="input-group">
+        <text class="input-label">货物描述</text>
+        <textarea 
+          class="textarea" 
+          placeholder="可选填" 
+          value="{{newGoods.description}}"
+          bindinput="onInputDesc"
+        />
+      </view>
+    </view>
+
+    <!-- 数量输入 -->
+    <view class="input-group" wx:if="{{currentTab !== 2}}">
+      <text class="input-label">{{currentTab === 0 ? '取出数量' : '放入数量'}}</text>
+      <view class="quantity-box">
+        <view class="quantity-btn" bindtap="decreaseQty">-</view>
+        <input 
+          class="quantity-input" 
+          type="number" 
+          value="{{quantity}}"
+          bindinput="onInputQty"
+        />
+        <view class="quantity-btn" bindtap="increaseQty">+</view>
+      </view>
+      <text class="quantity-hint" wx:if="{{selectedGoodsIndex >= 0}}">
+        库存剩余：{{goodsList[selectedGoodsIndex].stock}} 件
+      </text>
+    </view>
+
+    <!-- 操作按钮 -->
+    <button 
+      class="btn btn-block {{currentTab === 0 ? 'btn-warning' : (currentTab === 1 ? 'btn-success' : 'btn-primary')}}"
+      bindtap="submitOperation"
+    >
+      {{currentTab === 0 ? '确认取出' : (currentTab === 1 ? '确认放入' : '确认新增')}}
+    </button>
+
+    <!-- 删除按钮（仅编辑时显示） -->
+    <button 
+      class="btn btn-block btn-danger mt-20" 
+      wx:if="{{isEditing}}"
+      bindtap="deleteGoods"
+    >
+      删除货物
+    </button>
+  </view>
+
+  <!-- 快捷操作提示 -->
+  <view class="tips-card" wx:if="{{currentTab === 0}}">
+    <view class="tips-title">取出说明</view>
+    <view class="tips-item">• 取出货物将从库存中减少数量</view>
+    <view class="tips-item">• 取出数量不能超过当前库存</view>
+    <view class="tips-item">• 操作将记录到历史记录中</view>
+  </view>
+  
+  <view class="tips-card" wx:if="{{currentTab === 1}}">
+    <view class="tips-title">放入说明</view>
+    <view class="tips-item">• 放入货物将增加库存数量</view>
+    <view class="tips-item">• 请确保货物已放置到对应位置</view>
+    <view class="tips-item">• 操作将记录到历史记录中</view>
+  </view>
+</view>

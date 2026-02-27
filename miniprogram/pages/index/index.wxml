@@ -1,0 +1,73 @@
+<!--pages/index/index.wxml-->
+<view class="container">
+  <!-- 统计卡片 -->
+  <view class="stats-card">
+    <view class="stats-item">
+      <text class="stats-num">{{stats.total}}</text>
+      <text class="stats-label">货物总数</text>
+    </view>
+    <view class="stats-item">
+      <text class="stats-num text-success">{{stats.inStock}}</text>
+      <text class="stats-label">库存充足</text>
+    </view>
+    <view class="stats-item">
+      <text class="stats-num text-warning">{{stats.lowStock}}</text>
+      <text class="stats-label">库存不足</text>
+    </view>
+  </view>
+
+  <!-- 最近操作 -->
+  <view class="section">
+    <view class="section-title">最近操作</view>
+    <view class="card">
+      <view wx:if="{{recentHistory.length > 0}}">
+        <view class="history-item" wx:for="{{recentHistory}}" wx:key="_id">
+          <view class="history-icon {{item.type === 'in' ? 'bg-success' : 'bg-warning'}}">
+            {{item.type === 'in' ? '+' : '-'}}
+          </view>
+          <view class="history-info">
+            <text class="history-name">{{item.goodsName}}</text>
+            <text class="history-time">{{item.timeStr}}</text>
+          </view>
+          <view class="history-action">
+            <text class="tag {{item.type === 'in' ? 'tag-success' : 'tag-warning'}}">
+              {{item.type === 'in' ? '入库' : '出库'}}
+            </text>
+          </view>
+        </view>
+      </view>
+      <view wx:else class="empty">
+        <text>暂无操作记录</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 货物列表 -->
+  <view class="section">
+    <view class="section-title">货物列表</view>
+    <view wx:if="{{goodsList.length > 0}}">
+      <view class="goods-card" wx:for="{{goodsList}}" wx:key="_id" style="display: block;">
+        <view class="goods-info" bindtap="viewGoods" data-id="{{item._id || item.id}}">
+          <view class="goods-name">{{item.name}}</view>
+          <view class="goods-detail">
+            <text class="tag tag-primary">{{item.location}}</text>
+            <text class="goods-price">¥{{item.price}}</text>
+          </view>
+        </view>
+        <view class="goods-right">
+          <view class="goods-stock" bindtap="viewGoods" data-id="{{item._id || item.id}}">
+            <text class="stock-num {{item.stock > 10 ? 'text-success' : (item.stock > 0 ? 'text-warning' : 'text-error')}}">
+              {{item.stock}}
+            </text>
+            <text class="stock-label">库存</text>
+          </view>
+          <view class="delete-btn" catchtap="deleteGoods" data-id="{{item._id || item.id}}" data-name="{{item.name}}">🗑</view>
+        </view>
+      </view>
+    </view>
+    <view wx:else class="empty">
+      <text>暂无货物，请先添加</text>
+      <button class="btn btn-primary mt-20" bindtap="goToOperation">添加货物</button>
+    </view>
+  </view>
+</view>
